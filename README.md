@@ -106,7 +106,6 @@ Charity System is a web-based platform designed to connect charitable organizati
 
 ## Future Improvements
 
-- Add support for multiple languages.
 - Implement real-time notifications for task updates.
 - Enhance task filtering options.
 - Deploy the application to a cloud platform.
