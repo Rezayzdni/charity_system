@@ -43,6 +43,7 @@ Charity System is a web-based platform designed to connect charitable organizati
 - **Django REST Framework (DRF)**: For creating RESTful APIs.
 - **SQLite**: Lightweight database for development.
 - **django-cors-headers**: To handle Cross-Origin Resource Sharing (CORS).
+- **Caching (Redis)**: Cached frequently accessed endpoints(tasks)
 
 ### Frontend
 
