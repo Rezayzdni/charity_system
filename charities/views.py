@@ -4,6 +4,11 @@ from rest_framework.permissions import IsAuthenticated, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
+
 
 User = get_user_model()
 
@@ -48,21 +53,11 @@ class Tasks(generics.ListCreateAPIView):
     def get_queryset(self):
         return Task.objects.all_related_tasks_to_user(self.request.user)
 
-    def post(self, request, *args, **kwargs):
-        data = {
-            **request.data,
-            "charity_id": request.user.charity.id
-        }
-        serializer = self.serializer_class(data = data)
-        serializer.is_valid(raise_exception = True)
-        serializer.save()
-        return Response(serializer.data, status = status.HTTP_201_CREATED)
-
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
-            self.permission_classes = [IsAuthenticated, ]
+            self.permission_classes = [IsAuthenticated]
         else:
-            self.permission_classes = [IsCharityOwner, ]
+            self.permission_classes = [IsCharityOwner]
 
         return [permission() for permission in self.permission_classes]
 
@@ -72,6 +67,7 @@ class Tasks(generics.ListCreateAPIView):
             param = self.request.GET.get(value)
             if param:
                 filter_lookups[name] = param
+
         exclude_lookups = {}
         for name, value in Task.excluding_lookups:
             param = self.request.GET.get(value)
@@ -79,6 +75,48 @@ class Tasks(generics.ListCreateAPIView):
                 exclude_lookups[name] = param
 
         return queryset.filter(**filter_lookups).exclude(**exclude_lookups)
+
+  
+    def list(self, request, *args, **kwargs):
+        user_id = request.user.id
+
+       
+        query_string = "&".join(
+            [f"{k}={v}" for k, v in sorted(request.GET.items())]
+        )
+
+        cache_key = f"tasks:user:{user_id}:qs:{query_string}"
+
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            print("✅ TASKS FROM REDIS")
+            return Response(cached_data)
+
+        print("❌ TASKS FROM DATABASE")
+
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+
+   
+        cache.set(cache_key, serializer.data, timeout=300)
+
+        return Response(serializer.data)
+
+
+    def post(self, request, *args, **kwargs):
+        data = {
+            **request.data,
+            "charity_id": request.user.charity.id
+        }
+
+        serializer = self.serializer_class(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+ 
+        cache.delete_pattern(f"tasks:user:{request.user.id}:*")
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TaskRequest(APIView):

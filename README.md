@@ -29,7 +29,7 @@ Charity System is a web-based platform designed to connect charitable organizati
 - **API Integration**: Axios for communication with the backend.
 - **Pages**:
   - Authentication
-  - Tasks List
+  - Tasks List 
   - Benefactor Profile
   - Charity Profile
 
